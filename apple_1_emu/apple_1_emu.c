@@ -5,7 +5,6 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <memory.h>
 #include <perfect6502.h>
 
@@ -77,7 +76,7 @@ static void charout(state_t* state, char ch) {
 #if _WIN32
 		if (!_isatty(0))
 			return;
-#else
+#elif unix
 		struct stat st;
 		fstat(0, &st);
 		if (S_ISFIFO (st.st_mode))
