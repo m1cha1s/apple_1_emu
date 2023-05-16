@@ -58,7 +58,6 @@ const unsigned char wozmon[256] = {
 uint8_t read6502(uint16_t address) {
 	if (address < MEM_SIZE)
 		return memory[address]; // Ram
-								// TODO: Expand the memory?
 	if (address == 0xD010) {
 		uint8_t c = toupper(getchar());
 		if (c == 10)
@@ -68,7 +67,11 @@ uint8_t read6502(uint16_t address) {
 	}
 	if (address == 0xD011) {
 		char b;
+        #if _WIN32 || UNIX
 		if (fgets(&b, 1, stdin) != NULL)
+        #else
+		if (1)
+        #endif
 			return 0x80; // Characters available
 		else
 			return 0;    // No characters available
@@ -82,13 +85,13 @@ uint8_t read6502(uint16_t address) {
 }
 
 void write6502(uint16_t address, uint8_t value) {
-	if (address < 0x1000)
+	if (address < MEM_SIZE)
 		memory[address] = value;
 	if (address == 0xD012) {
 		uint8_t temp8 = value & 0x7F;
 		if (temp8 == 13)
 			temp8 = 10;
-		putchar(temp8);
+		printf("%c", temp8);
 	}
 }
 
