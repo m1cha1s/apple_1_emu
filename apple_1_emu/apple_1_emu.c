@@ -32,7 +32,6 @@ uint8_t read6502(uint16_t address) {
 		return c; // Give the character
 	}
 	if (address == 0xD011) {
-		char b;
         if(keyavailable())
 			return 0x80; // Characters available
 		else
@@ -57,9 +56,6 @@ void write6502(uint16_t address, uint8_t value) {
 			temp8 = 10;
 		writechar(temp8);
 	}
-    if (address >= 0xE000 && address < 0xF000)
-        basic[address - 0xE000] = value;
-
 }
 
 void apple_1_init() {

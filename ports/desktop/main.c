@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdint.h>
 #include <apple_1_emu.h>
 
 uint8_t readkey() {
@@ -10,7 +11,8 @@ void writechar(uint8_t ch) {
 }
 
 uint8_t keyavailable() {
-    return 1;
+    char b;
+    return fgets(&b, 1, stdin) != NULL;
 }
 
 int main() {
