@@ -16,6 +16,10 @@ void irq6502();
 void nmi6502();
 void hookexternal(void *funcptr);
 
+extern uint8_t readkey();
+extern void writechar(uint8_t ch);
+extern uint8_t keyavailable();
+
 #define MEM_SIZE 0x8000
 
 uint8_t memory[MEM_SIZE];
@@ -59,7 +63,7 @@ uint8_t read6502(uint16_t address) {
 	if (address < MEM_SIZE)
 		return memory[address]; // Ram
 	if (address == 0xD010) {
-		uint8_t c = toupper(getchar());
+		uint8_t c = toupper(readkey());
 		if (c == 10)
 			c = 13;
 		c |= 0x80;
@@ -67,11 +71,7 @@ uint8_t read6502(uint16_t address) {
 	}
 	if (address == 0xD011) {
 		char b;
-        #if _WIN32 || UNIX
-		if (fgets(&b, 1, stdin) != NULL)
-        #else
-		if (1)
-        #endif
+        if(keyavailable())
 			return 0x80; // Characters available
 		else
 			return 0;    // No characters available
@@ -91,7 +91,7 @@ void write6502(uint16_t address, uint8_t value) {
 		uint8_t temp8 = value & 0x7F;
 		if (temp8 == 13)
 			temp8 = 10;
-		printf("%c", temp8);
+		writechar(temp8);
 	}
 }
 
