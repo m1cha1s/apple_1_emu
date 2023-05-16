@@ -5,12 +5,20 @@
 #endif
 
 #include <stdio.h>
+#include <stdint.h>
+#include <ctype.h>
 #include <memory.h>
-#include <perfect6502.h>
 
-// unsigned char A, X, Y, S, P;
-// unsigned short PC;
-// int N, Z, C;
+void reset6502();
+void exec6502(uint32_t tickcount);
+void step6502();                
+void irq6502();
+void nmi6502();
+void hookexternal(void *funcptr);
+
+#define MEM_SIZE 0x8000
+
+uint8_t memory[MEM_SIZE];
 
 const unsigned char wozmon[256] = {
     0xD8, 0x58, 0xA0, 0x7F, 0x8C, 0x12, 0xD0, 0xA9, 
@@ -47,91 +55,47 @@ const unsigned char wozmon[256] = {
     0x00, 0x00, 0x00, 0x0F, 0x00, 0xFF, 0x00, 0x00, 
 };
 
-static void charout(state_t* state, char ch) {
-	unsigned char S = readSP(state);
-	unsigned short a = 1 + memory[0x0100+S+1] | memory[0x0100+((S+2) & 0xFF)] << 8;
-
-	/*
-	 * Apple I BASIC prints every character received
-	 * from the terminal. UNIX terminals do this
-	 * anyway, so we have to avoid printing every
-	 * line again
-	 */
-	if (a==0xe2a6)	/* character echo */
-		return;
-	if (a==0xe2b6)	/* CR echo */
-		return;
-
-	/*
-	 * Apple I BASIC prints a line break and 6 spaces
-	 * after every 37 characters. UNIX terminals do
-	 * line breaks themselves, so ignore these
-	 * characters
-	 */
-	if (a==0xe025 && (ch==10 || ch==' '))
-		return;
-
-	/* INPUT */
-	if (a==0xe182) {
-#if _WIN32
-		if (!_isatty(0))
-			return;
-#elif unix
-		struct stat st;
-		fstat(0, &st);
-		if (S_ISFIFO (st.st_mode))
-			return;
-#endif
+uint8_t read6502(uint16_t address) {
+	if (address < MEM_SIZE)
+		return memory[address]; // Ram
+								// TODO: Expand the memory?
+	if (address == 0xD010) {
+		uint8_t c = toupper(getchar());
+		if (c == 10)
+			c = 13;
+		c |= 0x80;
+		return c; // Give the character
 	}
+	if (address == 0xD011) {
+		char b;
+		if (fgets(&b, 1, stdin) != NULL)
+			return 0x80; // Characters available
+		else
+			return 0;    // No characters available
+	}
+	if (address == 0xD012)
+		return 0; // We are ready to print the character
+	if (address >= 0xFF00)
+		return wozmon[address-0xFF00];
 
-	putc(ch, stdout);
-	fflush(stdout);
+	return 0;
 }
 
-static void handle_monitor(state_t* state)
-{
-	if (readRW(state)) {
-		unsigned short a = readAddressBus(state);
-		if (a == 0xD010) {
-			unsigned char c = getchar();
-			if (c == 10)
-				c = 13;
-			c |= 0x80;
-			writeDataBus(state, c);
-		}
-		if (a == 0xD011) {
-            char b;
-			if (fgets(&b, 1, stdin) != NULL)
-				/* if the code is reading a character, we have one ready */
-				writeDataBus(state, 0x80);
-			else
-				/* if the code checks for a STOP condition, nothing is pressed */
-				writeDataBus(state, 0);
-		}
-		if (a == 0xD012) {
-			/* 0x80 would mean we're not yet ready to receive a character */
-			writeDataBus(state, 0);
-		}
-	} else {
-		unsigned short a = readAddressBus(state);
-		unsigned char d = readDataBus(state);
-		if (a == 0xD012) {
-			unsigned char temp8 = d & 0x7F;
-			if (temp8 == 13)
-				temp8 = 10;
-			charout(state, temp8);
-		}
+void write6502(uint16_t address, uint8_t value) {
+	if (address < 0x1000)
+		memory[address] = value;
+	if (address == 0xD012) {
+		uint8_t temp8 = value & 0x7F;
+		if (temp8 == 13)
+			temp8 = 10;
+		putchar(temp8);
 	}
 }
 
-apple_1_state apple_1_init() {
-    memcpy(memory+0xff00, wozmon, 256);
-    return (apple_1_state){initAndResetChip(), 0};
+void apple_1_init() {
+    reset6502();
 }
 
-void apple_1_step(apple_1_state* state) {
-    step(state->state);
-    state->clk = !state->clk;
-    if (!state->clk)
-        handle_monitor(state->state);
+void apple_1_step() {
+	step6502();
 }
