@@ -24,20 +24,20 @@ uint8_t memory[MEM_SIZE];
 uint8_t read6502(uint16_t address) {
 	if (address < MEM_SIZE)
 		return memory[address]; // Ram
-	if (address == 0xD010) {
+	if ((address & 0xFF1F) == 0xD010) {
 		uint8_t c = toupper(readkey());
 		if (c == 10)
 			c = 13;
 		c |= 0x80;
 		return c; // Give the character
 	}
-	if (address == 0xD011) {
+	if ((address & 0xFF1F) == 0xD011) {
         if(keyavailable())
 			return 0x80; // Characters available
 		else
 			return 0;    // No characters available
 	}
-	if (address == 0xD012)
+	if ((address & 0xFF1F) == 0xD012)
 		return 0; // We are ready to print the character
     if (address >= 0xE000 && address < 0xF000)
         return basic[address - 0xE000];
@@ -50,7 +50,7 @@ uint8_t read6502(uint16_t address) {
 void write6502(uint16_t address, uint8_t value) {
 	if (address < MEM_SIZE)
 		memory[address] = value;
-	if (address == 0xD012) {
+	if ((address & 0xFF1F) == 0xD012) {
 		uint8_t temp8 = value & 0x7F;
 		if (temp8 == 13)
 			temp8 = 10;
