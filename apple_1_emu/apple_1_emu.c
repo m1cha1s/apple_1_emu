@@ -41,8 +41,8 @@ uint8_t read6502(uint16_t address) {
 		return 0; // We are ready to print the character
     if (address >= 0xE000 && address < 0xF000)
         return basic[address - 0xE000];
-	if (address >= 0xFF00)
-		return wozmon[address-0xFF00];
+	if ((address & 0xF0FF) >= 0xF000)
+		return wozmon[(address & 0xF0FF)-0xF000];
 
 	return 0;
 }
